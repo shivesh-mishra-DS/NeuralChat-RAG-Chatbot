@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  background-color: #0d0d0f;
+  color: #e0e0e8;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3a3a45; border-radius: 99px; }
+
+/* ── Glass card ─────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(26, 26, 31, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Neon input focus ring ──────────────────────────────────────────────────── */
+.neon-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(126, 255, 212, 0.35);
+}
+
+/* ── Typing dots ────────────────────────────────────────────────────────────── */
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #7effd4; }
+.dot:nth-child(1) { animation: pulseDot 1.4s ease-in-out infinite 0s; }
+.dot:nth-child(2) { animation: pulseDot 1.4s ease-in-out infinite 0.2s; }
+.dot:nth-child(3) { animation: pulseDot 1.4s ease-in-out infinite 0.4s; }
+
+/* ── Markdown in chat ───────────────────────────────────────────────────────── */
+.prose-chat p  { margin: 0 0 0.5rem; }
+.prose-chat code {
+  background: rgba(126,255,212,0.08);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82em;
+}
+.prose-chat pre {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid #3a3a45;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.prose-chat pre code { background: transparent; padding: 0; }
