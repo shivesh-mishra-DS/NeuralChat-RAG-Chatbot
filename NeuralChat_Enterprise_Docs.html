@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>NeuralChat - Technical Documentation</title>
+<style>
+
+/* ═══════════════════════════════════════════════════════
+   RESET + CSS VARIABLES
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #080c12;
+  --bg2:        #0e1420;
+  --bg3:        #141a26;
+  --bg4:        #1a2030;
+  --border:     #1e2840;
+  --border2:    #2a3550;
+  --text:       #c8d4e8;
+  --text2:      #7a90b0;
+  --text3:      #4a5870;
+  --green:      #3dd68c;
+  --green2:     #2aaa6e;
+  --green-bg:   rgba(61,214,140,0.07);
+  --green-glow: rgba(61,214,140,0.18);
+  --blue:       #4a9eff;
+  --blue-bg:    rgba(74,158,255,0.07);
+  --blue-glow:  rgba(74,158,255,0.18);
+  --orange:     #ff9f4a;
+  --orange-bg:  rgba(255,159,74,0.07);
+  --red:        #ff6b6b;
+  --purple:     #b06aff;
+  --heading:    #e8f0ff;
+  --nav-w:      252px;
+  --radius:     10px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: clamp(13px, 2vw, 15px);
+  line-height: 1.7;
+  display: flex;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--green2); }
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATED BACKGROUND LAYER
+   Radial orbs only — no scanline (causes iOS rendering bugs)
+═══════════════════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Slow-moving radial gradient orbs */
+#bg-canvas::before {
+  content: "";
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 20% 40%, rgba(61,214,140,0.06) 0%, transparent 45%),
+    radial-gradient(circle at 75% 70%, rgba(74,158,255,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 10%, rgba(176,106,255,0.04) 0%, transparent 40%);
+  animation: bgOrbs 28s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Soft animated radial glow center — replaces scanline */
+#bg-canvas::after {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61,214,140,0.04) 0%, rgba(74,158,255,0.03) 40%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: glowPulse 8s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes bgOrbs {
+  0%, 100% { transform: translate(0,0) rotate(0deg); }
+  33%       { transform: translate(-4%, -6%) rotate(1deg); }
+  66%       { transform: translate(4%, 3%) rotate(-1deg); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLOATING TECH ICONS
+   AI / Neural Net / CPU / DB / Shield / Cloud / API Gateway
+   — very low opacity, slow diagonal drift, soft glow
+   — disabled on mobile (<860px) for performance
+═══════════════════════════════════════════════════════ */
+.float-icon {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  filter: drop-shadow(0 0 10px currentColor);
+  will-change: transform, opacity;
+}
+
+.float-icon svg { width: 100%; height: 100%; display: block; }
+
+/* Each icon gets unique position, size, speed, delay, path angle */
+.float-icon:nth-child(1){
+  width:54px; height:54px;
+  top:6%; left:-70px;
+  color:var(--green);
+  animation: floatLR 40s linear infinite;
+  animation-delay: 0s;
+}
+.float-icon:nth-child(2){
+  width:46px; height:46px;
+  top:22%; left:-70px;
+  color:var(--blue);
+  animation: floatDiagDown 46s linear infinite;
+  animation-delay: 8s;
+}
+.float-icon:nth-child(3){
+  width:62px; height:62px;
+  top:42%; left:-70px;
+  color:var(--purple);
+  animation: floatLR 36s linear infinite;
+  animation-delay: 16s;
+}
+.float-icon:nth-child(4){
+  width:50px; height:50px;
+  top:60%; left:-70px;
+  color:var(--orange);
+  animation: floatDiagUp 44s linear infinite;
+  animation-delay: 5s;
+}
+.float-icon:nth-child(5){
+  width:42px; height:42px;
+  top:78%; left:-70px;
+  color:var(--green);
+  animation: floatLR 34s linear infinite;
+  animation-delay: 22s;
+}
+.float-icon:nth-child(6){
+  width:58px; height:58px;
+  top:14%; left:-70px;
+  color:var(--blue);
+  animation: floatDiagDown 50s linear infinite;
+  animation-delay: 12s;
+}
+
+/* Left-to-right, slight upward diagonal */
+@keyframes floatLR {
+  0%   { transform: translate(0,   0px)  rotate(0deg);   opacity: 0;     }
+  4%   { opacity: 0.055; }
+  92%  { opacity: 0.055; }
+  100% { transform: translate(calc(100vw + 130px), -18vh) rotate(160deg); opacity: 0; }
+}
+
+/* Left-to-right, downward diagonal */
+@keyframes floatDiagDown {
+  0%   { transform: translate(0, 0px)    rotate(0deg);   opacity: 0;     }
+  4%   { opacity: 0.05;  }
+  92%  { opacity: 0.05;  }
+  100% { transform: translate(calc(100vw + 130px), 22vh)  rotate(200deg); opacity: 0; }
+}
+
+/* Left-to-right, upward diagonal */
+@keyframes floatDiagUp {
+  0%   { transform: translate(0, 0px)    rotate(0deg);   opacity: 0;     }
+  4%   { opacity: 0.065; }
+  92%  { opacity: 0.065; }
+  100% { transform: translate(calc(100vw + 130px), -28vh) rotate(120deg); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE TOP NAVBAR (visible <860px, replaces sidebar)
+═══════════════════════════════════════════════════════ */
+#mobile-nav {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(8,12,18,0.97);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  padding-top: calc(14px + env(safe-area-inset-top));
+}
+
+#mobile-nav-header .m-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#mobile-nav-header .m-brand-text .m-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+
+#mobile-nav-header .m-brand-text .m-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.2;
+}
+
+#mobile-menu-toggle {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 0;
+}
+
+#mobile-menu-toggle span {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  background: var(--text2);
+  border-radius: 2px;
+  transition: transform 0.25s, opacity 0.2s;
+}
+
+#mobile-menu-toggle.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+#mobile-menu-toggle.open span:nth-child(2) { opacity: 0; }
+#mobile-menu-toggle.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+#mobile-menu {
+  display: none;
+  flex-direction: column;
+  padding: 8px 0 16px;
+  border-top: 1px solid var(--border);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+#mobile-menu.open { display: flex; }
+
+#mobile-menu .m-group {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 10px 20px 4px;
+}
+
+#mobile-menu a {
+  display: block;
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--text2);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+#mobile-menu a:active,
+#mobile-menu a.nav-active {
+  color: var(--green);
+  border-left-color: var(--green);
+  background: var(--green-bg);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR NAVIGATION
+═══════════════════════════════════════════════════════ */
+#nav {
+  width: var(--nav-w);
+  min-width: var(--nav-w);
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  background: rgba(14,20,32,0.96);
+  border-right: 1px solid var(--border);
+  padding-bottom: 40px;
+  flex-shrink: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nav-brand {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle green pulse behind brand */
+.nav-brand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 50%, var(--green-glow) 0%, transparent 70%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.nav-brand .label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+
+.nav-brand .title { font-size: 18px; font-weight: 700; color: var(--heading); }
+.nav-brand .sub   { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Live dot indicator */
+.nav-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--green);
+  margin-top: 8px;
+}
+
+.nav-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(61,214,140,0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(61,214,140,0); }
+}
+
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 14px 20px 5px;
+}
+
+/* NAV LINKS — base state */
+#nav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  font-size: 12.5px;
+  color: var(--text2);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.25s, background 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  position: relative;
+}
+
+#nav a:hover {
+  color: var(--green);
+  background: var(--green-bg);
+  border-left-color: var(--green2);
+  transform: translateX(2px);
+}
+
+/* ACTIVE NAV LINK — set by IntersectionObserver JS */
+#nav a.nav-active {
+  color: var(--green);
+  background: linear-gradient(90deg, rgba(61,214,140,0.12) 0%, transparent 100%);
+  border-left-color: var(--green);
+  box-shadow: inset 0 0 14px rgba(61,214,140,0.06),
+              -1px 0 0 0 var(--green);
+  transform: translateX(3px);
+  font-weight: 600;
+}
+
+#nav a.nav-active::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════════════════ */
+#main {
+  flex: 1;
+  min-width: 0;
+  padding: 48px 56px;
+  max-width: 920px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION REVEAL ANIMATION (IntersectionObserver driven)
+═══════════════════════════════════════════════════════ */
+.section {
+  margin-bottom: 72px;
+  padding-top: 4px;
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.55s ease, transform 0.55s ease, box-shadow 0.4s ease;
+  border-radius: 14px;
+  padding: 2px 0 0 0;
+}
+
+.section.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Active/elevated section shadow */
+.section.section-active {
+  box-shadow: 0 -3px 0 0 rgba(61,214,140,0.18),
+              0 6px 40px rgba(0,0,0,0.3);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SECTION HEADER ELEMENTS
+═══════════════════════════════════════════════════════ */
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+  background: var(--green-bg);
+  border: 1px solid rgba(61,214,140,0.2);
+  border-radius: 4px;
+  padding: 3px 10px;
+  margin-bottom: 10px;
+}
+
+/* Section title with animated underline on hover */
+.section-title {
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 6px;
+  display: inline-block;
+  position: relative;
+}
+
+.section-title::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.section-title:hover::after { width: 100%; }
+
+.section-sub {
+  font-size: 14px;
+  color: var(--text2);
+  margin-bottom: 28px;
+  max-width: 660px;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, var(--border), transparent);
+  margin: 28px 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HERO BLOCK
+═══════════════════════════════════════════════════════ */
+.hero {
+  background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 36px 44px;
+  margin-bottom: 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 280px; height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61,214,140,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Animated top border on hero */
+.hero::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent, var(--green2), var(--blue), var(--green2), transparent);
+  background-size: 200% 100%;
+  animation: shimmerBorder 4s linear infinite;
+}
+
+@keyframes shimmerBorder {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--green);
+  background: var(--green-bg);
+  border: 1px solid rgba(61,214,140,0.2);
+  border-radius: 20px;
+  padding: 3px 13px;
+  margin-bottom: 14px;
+}
+
+.hero-title { font-size: clamp(22px, 4vw, 32px); font-weight: 800; color: var(--heading); line-height: 1.2; margin-bottom: 10px; }
+.hero-title span { color: var(--green); }
+.hero-desc  { font-size: 15px; color: var(--text2); max-width: 540px; line-height: 1.6; margin-bottom: 22px; }
+
+.stack-row { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.stack-tag {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 11px;
+  border-radius: 6px;
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.stack-tag:hover {
+  border-color: var(--green2);
+  color: var(--green);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CARDS — hover lift + glow
+═══════════════════════════════════════════════════════ */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(61,214,140,0), transparent);
+  transition: background 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(61,214,140,0.18);
+  border-color: rgba(61,214,140,0.25);
+}
+
+.card:hover::before {
+  background: linear-gradient(90deg, transparent, rgba(61,214,140,0.4), transparent);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--green2);
+}
+
+.card p { color: var(--text); line-height: 1.7; margin-bottom: 6px; }
+.card p:last-child { margin-bottom: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   TECHNICAL INDICATOR BADGES (SVG icon + label)
+═══════════════════════════════════════════════════════ */
+.tech-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid;
+  margin: 4px 4px 4px 0;
+  vertical-align: middle;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.tech-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.tech-badge svg { flex-shrink: 0; }
+
+.tb-green  { color: var(--green);  background: var(--green-bg);  border-color: rgba(61,214,140,0.25); }
+.tb-blue   { color: var(--blue);   background: var(--blue-bg);   border-color: rgba(74,158,255,0.25); }
+.tb-orange { color: var(--orange); background: var(--orange-bg); border-color: rgba(255,159,74,0.25); }
+.tb-purple { color: var(--purple); background: rgba(176,106,255,0.07); border-color: rgba(176,106,255,0.25); }
+
+/* ═══════════════════════════════════════════════════════
+   GRIDS
+═══════════════════════════════════════════════════════ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+/* ═══════════════════════════════════════════════════════
+   PILLS
+═══════════════════════════════════════════════════════ */
+.pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 13px;
+  border-radius: 20px;
+  border: 1px solid;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pill:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.pill-green  { color: var(--green);  background: var(--green-bg);  border-color: rgba(61,214,140,0.25); }
+.pill-blue   { color: var(--blue);   background: var(--blue-bg);   border-color: rgba(74,158,255,0.25); }
+.pill-orange { color: var(--orange); background: var(--orange-bg); border-color: rgba(255,159,74,0.25); }
+.pill-purple { color: var(--purple); background: rgba(176,106,255,0.07); border-color: rgba(176,106,255,0.25); }
+
+/* ═══════════════════════════════════════════════════════
+   CODE BLOCKS
+═══════════════════════════════════════════════════════ */
+pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  overflow-x: auto;
+  margin: 14px 0;
+  font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #a8c0e0;
+  position: relative;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+pre:hover {
+  border-color: var(--border2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+
+code {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 12px;
+  color: var(--green);
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLOW STEPS — pulse arrows + hover number animation
+═══════════════════════════════════════════════════════ */
+.flow { display: flex; flex-direction: column; margin: 18px 0; }
+
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+
+/* Animated connector line */
+.flow-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 32px;
+  width: 2px;
+  height: calc(100% + 2px);
+  background: linear-gradient(to bottom, var(--green2), var(--border));
+  animation: flowPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes flowPulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; box-shadow: 0 0 6px var(--green2); }
+}
+
+.flow-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--green-bg);
+  border: 2px solid var(--green2);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s;
+  cursor: default;
+}
+
+.flow-step:hover .flow-num {
+  transform: scale(1.18);
+  background: rgba(61,214,140,0.16);
+  box-shadow: 0 0 14px rgba(61,214,140,0.35);
+}
+
+.flow-body { padding-bottom: 22px; flex: 1; }
+.flow-body strong { display: block; font-size: 13.5px; font-weight: 700; color: var(--heading); margin-bottom: 3px; }
+.flow-body span   { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+/* ═══════════════════════════════════════════════════════
+   ARCHITECTURE DIAGRAM — animated gradient border + light beam
+═══════════════════════════════════════════════════════ */
+.arch-diagram {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  margin: 20px 0;
+  position: relative;
+  outline: 1px solid transparent;
+}
+
+/* Animated gradient border using pseudo-element */
+.arch-diagram::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius) + 1px);
+  background: linear-gradient(135deg,
+    rgba(61,214,140,0.4),
+    rgba(74,158,255,0.2),
+    rgba(176,106,255,0.2),
+    rgba(61,214,140,0.4));
+  background-size: 300% 300%;
+  animation: gradBorder 6s ease infinite;
+  z-index: -1;
+}
+
+/* Inner mask to show only border */
+.arch-diagram::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(var(--radius) - 1px);
+  background: var(--bg);
+  z-index: -1;
+}
+
+@keyframes gradBorder {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Light beam traveling from Layer 1 down to LLM */
+.arch-beam {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  width: 1px;
+  height: 0;
+  background: linear-gradient(to bottom, var(--green), transparent);
+  opacity: 0;
+  animation: beamTravel 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes beamTravel {
+  0%   { top: 80px;  height: 0;    opacity: 0; }
+  10%  {             height: 0;    opacity: 0.7; }
+  70%  { top: 80px;  height: 320px; opacity: 0.3; }
+  100% { top: 80px;  height: 340px; opacity: 0; }
+}
+
+.arch-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 22px;
+}
+
+.arch-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Architecture boxes — hover lift */
+.arch-box {
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 110px;
+  border: 1px solid;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: default;
+  position: relative;
+  z-index: 1;
+}
+
+.arch-box:hover {
+  transform: translateY(-4px) scale(1.04);
+  z-index: 3;
+}
+
+.arch-box .ab-label { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.65; margin-bottom: 3px; }
+.arch-box .ab-name  { font-size: 12px; font-weight: 700; }
+
+.arch-box.green  { background: var(--green-bg);  border-color: rgba(61,214,140,0.3);  color: var(--green);  }
+.arch-box.blue   { background: var(--blue-bg);   border-color: rgba(74,158,255,0.3);  color: var(--blue);   }
+.arch-box.orange { background: var(--orange-bg); border-color: rgba(255,159,74,0.3);  color: var(--orange); }
+.arch-box.purple { background: rgba(176,106,255,0.07); border-color: rgba(176,106,255,0.3); color: var(--purple); }
+.arch-box.red    { background: rgba(255,107,107,0.07); border-color: rgba(255,107,107,0.3); color: var(--red); }
+
+.arch-box.green:hover  { box-shadow: 0 0 20px rgba(61,214,140,0.2),  0 8px 24px rgba(0,0,0,0.3); border-color: var(--green2); }
+.arch-box.blue:hover   { box-shadow: 0 0 20px rgba(74,158,255,0.2),  0 8px 24px rgba(0,0,0,0.3); border-color: var(--blue); }
+.arch-box.orange:hover { box-shadow: 0 0 20px rgba(255,159,74,0.2),  0 8px 24px rgba(0,0,0,0.3); border-color: var(--orange); }
+.arch-box.purple:hover { box-shadow: 0 0 20px rgba(176,106,255,0.2), 0 8px 24px rgba(0,0,0,0.3); border-color: var(--purple); }
+.arch-box.red:hover    { box-shadow: 0 0 20px rgba(255,107,107,0.2), 0 8px 24px rgba(0,0,0,0.3); border-color: var(--red); }
+
+.arch-arrow-v {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 6px auto;
+  color: var(--text3);
+  font-size: 10px;
+}
+
+.arch-arrow-v .line {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(to bottom, var(--border2), var(--green2));
+  animation: flowPulse 2.5s ease-in-out infinite;
+}
+
+.arch-arrow-v .tip  {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--green2);
+}
+
+.arch-arrow-v .note { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════════ */
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+
+th {
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border2);
+}
+
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+  transition: background 0.15s;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(61,214,140,0.03); }
+
+td.green  { color: var(--green);  font-weight: 600; }
+td.blue   { color: var(--blue);   font-weight: 600; }
+td.orange { color: var(--orange); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════
+   CALLOUTS
+═══════════════════════════════════════════════════════ */
+.callout {
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin: 14px 0;
+  border-left: 3px solid;
+  font-size: 13.5px;
+  line-height: 1.6;
+  transition: box-shadow 0.25s, transform 0.25s;
+}
+
+.callout:hover {
+  transform: translateX(2px);
+  box-shadow: 2px 0 0 0 var(--green2);
+}
+
+.callout-green  { background: var(--green-bg);  border-color: var(--green);  }
+.callout-blue   { background: var(--blue-bg);   border-color: var(--blue);   }
+.callout-orange { background: var(--orange-bg); border-color: var(--orange); }
+.callout strong { font-weight: 700; }
+.callout-green  strong { color: var(--green);  }
+.callout-blue   strong { color: var(--blue);   }
+.callout-orange strong { color: var(--orange); }
+
+/* ═══════════════════════════════════════════════════════
+   TYPOGRAPHY
+═══════════════════════════════════════════════════════ */
+h2 { font-size: 17px; font-weight: 700; color: var(--heading); margin: 26px 0 10px; }
+h3 { font-size: 14px; font-weight: 700; color: var(--heading); margin: 18px 0 8px; }
+p  { margin-bottom: 10px; }
+ul, ol { padding-left: 20px; margin-bottom: 10px; }
+li { margin-bottom: 4px; color: var(--text); }
+li strong { color: var(--heading); }
+
+/* ═══════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════ */
+.footer {
+  text-align: center;
+  padding: 16px 0 48px;
+  font-size: 12px;
+  color: var(--text3);
+  position: relative;
+}
+
+.footer::before {
+  content: "";
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border2), transparent);
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL-TO-TOP BUTTON
+═══════════════════════════════════════════════════════ */
+#scrollTop {
+  position: fixed;
+  bottom: calc(32px + env(safe-area-inset-bottom));
+  right: 32px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--green);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.2s, box-shadow 0.2s;
+  z-index: 200;
+}
+
+#scrollTop.visible { opacity: 1; pointer-events: auto; }
+#scrollTop:hover { transform: translateY(-2px); box-shadow: 0 0 14px rgba(61,214,140,0.3); }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — Mobile optimized
+═══════════════════════════════════════════════════════ */
+@media (max-width: 860px) {
+  /* Hide desktop sidebar, show mobile nav */
+  #nav          { display: none; }
+  #mobile-nav   { display: block; }
+
+  /* Disable floating icons for performance */
+  .float-icon   { display: none !important; }
+
+  /* Disable heavy bg animation on mobile */
+  #bg-canvas::before { animation: none; }
+  #bg-canvas::after  { animation: none; opacity: 0.5; }
+
+  body { flex-direction: column; }
+
+  #main {
+    padding: 24px 16px;
+    padding-left: calc(16px + env(safe-area-inset-left));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+
+  .hero { padding: 20px 18px; }
+  .hero-title { font-size: clamp(20px, 6vw, 28px); }
+  .hero-desc  { font-size: 14px; }
+
+  .section-title { font-size: clamp(18px, 5vw, 22px); }
+
+  pre {
+    font-size: 11px;
+    padding: 14px 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  /* Ensure safe area padding on scroll-to-top */
+  #scrollTop {
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    right: calc(16px + env(safe-area-inset-right));
+  }
+}
+
+/* Very small screens — 360px baseline */
+@media (max-width: 400px) {
+  #main { padding: 16px 12px; }
+  .hero { padding: 16px 14px; }
+  .card { padding: 16px 14px; }
+  .tech-badge { font-size: 10px; padding: 3px 8px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     BACKGROUND LAYER (orbs + soft glow, NO scanline)
+═══════════════════════════════════════════════════════ -->
+<div id="bg-canvas" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     FLOATING TECH ICONS (SVG, no emojis)
+     AI brain / CPU / Database / Shield / Cloud / API
+     Disabled automatically on mobile (<860px)
+═══════════════════════════════════════════════════════ -->
+
+<!-- 1. Neural network nodes -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="6" stroke="currentColor" stroke-width="2"/>
+    <circle cx="10" cy="20" r="4" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="54" cy="20" r="4" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="10" cy="44" r="4" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="54" cy="44" r="4" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="32" cy="8"  r="4" stroke="currentColor" stroke-width="1.5"/>
+    <circle cx="32" cy="56" r="4" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="14" y1="22" x2="26" y2="29" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="50" y1="22" x2="38" y2="29" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="14" y1="42" x2="26" y2="35" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="50" y1="42" x2="38" y2="35" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="32" y1="12" x2="32" y2="26" stroke="currentColor" stroke-width="1.2"/>
+    <line x1="32" y1="38" x2="32" y2="52" stroke="currentColor" stroke-width="1.2"/>
+  </svg>
+</div>
+
+<!-- 2. CPU chip -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="16" y="16" width="32" height="32" rx="3" stroke="currentColor" stroke-width="2"/>
+    <rect x="22" y="22" width="20" height="20" rx="1" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="24" y1="16" x2="24" y2="10" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="32" y1="16" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="40" y1="16" x2="40" y2="10" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="24" y1="48" x2="24" y2="54" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="32" y1="48" x2="32" y2="54" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="40" y1="48" x2="40" y2="54" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="16" y1="24" x2="10" y2="24" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="16" y1="32" x2="10" y2="32" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="16" y1="40" x2="10" y2="40" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="48" y1="24" x2="54" y2="24" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="48" y1="32" x2="54" y2="32" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="48" y1="40" x2="54" y2="40" stroke="currentColor" stroke-width="1.5"/>
+  </svg>
+</div>
+
+<!-- 3. Database cylinder -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="32" cy="16" rx="18" ry="7" stroke="currentColor" stroke-width="2"/>
+    <line x1="14" y1="16" x2="14" y2="48" stroke="currentColor" stroke-width="2"/>
+    <line x1="50" y1="16" x2="50" y2="48" stroke="currentColor" stroke-width="2"/>
+    <ellipse cx="32" cy="48" rx="18" ry="7" stroke="currentColor" stroke-width="2"/>
+    <ellipse cx="32" cy="30" rx="18" ry="7" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3"/>
+  </svg>
+</div>
+
+<!-- 4. Security shield -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M32 8 L52 16 L52 34 C52 46 32 56 32 56 C32 56 12 46 12 34 L12 16 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M24 32 L30 38 L40 26" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<!-- 5. Cloud infrastructure -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M48 42H18C13.6 42 10 38.4 10 34C10 30 12.8 26.6 16.6 25.8C16.2 24.6 16 23.3 16 22C16 15.4 21.4 10 28 10C32.8 10 37 12.7 39.2 16.8C40 16.3 41 16 42 16C47.5 16 52 20.5 52 26C52 26.3 52 26.7 51.9 27C54.4 28.1 56 30.5 56 33.2C56 37.9 52.4 42 48 42Z" stroke="currentColor" stroke-width="2"/>
+  </svg>
+</div>
+
+<!-- 6. API gateway arrows -->
+<div class="float-icon" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="22" width="16" height="20" rx="3" stroke="currentColor" stroke-width="2"/>
+    <rect x="40" y="14" width="16" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
+    <rect x="40" y="32" width="16" height="12" rx="3" stroke="currentColor" stroke-width="2"/>
+    <line x1="24" y1="32" x2="40" y2="20" stroke="currentColor" stroke-width="1.5"/>
+    <line x1="24" y1="32" x2="40" y2="38" stroke="currentColor" stroke-width="1.5"/>
+    <polyline points="36,17 40,20 36,23" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+    <polyline points="36,35 40,38 36,41" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MOBILE TOP NAVBAR (shown below 860px)
+═══════════════════════════════════════════════════════ -->
+<div id="mobile-nav" role="navigation" aria-label="Mobile documentation navigation">
+  <div id="mobile-nav-header">
+    <div class="m-brand">
+      <div class="m-brand-text">
+        <div class="m-label">Documentation</div>
+        <div class="m-title">NeuralChat</div>
+      </div>
+    </div>
+    <button id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+  <div id="mobile-menu" role="menu">
+    <div class="m-group">Project</div>
+    <a href="#s1" data-section="s1" role="menuitem">01&nbsp;&nbsp;Project Overview</a>
+    <a href="#s2" data-section="s2" role="menuitem">02&nbsp;&nbsp;System Architecture</a>
+    <div class="m-group">Technical</div>
+    <a href="#s3" data-section="s3" role="menuitem">03&nbsp;&nbsp;Frontend</a>
+    <a href="#s4" data-section="s4" role="menuitem">04&nbsp;&nbsp;Backend</a>
+    <a href="#s5" data-section="s5" role="menuitem">05&nbsp;&nbsp;RAG Pipeline</a>
+    <a href="#s6" data-section="s6" role="menuitem">06&nbsp;&nbsp;Database Design</a>
+    <a href="#s7" data-section="s7" role="menuitem">07&nbsp;&nbsp;Auth and Security</a>
+    <div class="m-group">Planning</div>
+    <a href="#s8" data-section="s8" role="menuitem">08&nbsp;&nbsp;Scalability Plan</a>
+    <a href="#s9" data-section="s9" role="menuitem">09&nbsp;&nbsp;Design Decisions</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SIDEBAR NAVIGATION
+═══════════════════════════════════════════════════════ -->
+<nav id="nav" role="navigation" aria-label="Documentation sections">
+  <div class="nav-brand">
+    <div class="label">Documentation</div>
+    <div class="title">NeuralChat</div>
+    <div class="sub">Full Stack RAG Chatbot</div>
+    <div class="nav-live">
+      <span class="nav-live-dot"></span>
+      <span>v1.0 &mdash; Live Doc</span>
+    </div>
+  </div>
+
+  <div class="nav-group-label">Project</div>
+  <a href="#s1" data-section="s1">01&nbsp;&nbsp;Project Overview</a>
+  <a href="#s2" data-section="s2">02&nbsp;&nbsp;System Architecture</a>
+
+  <div class="nav-group-label">Technical</div>
+  <a href="#s3" data-section="s3">03&nbsp;&nbsp;Frontend</a>
+  <a href="#s4" data-section="s4">04&nbsp;&nbsp;Backend</a>
+  <a href="#s5" data-section="s5">05&nbsp;&nbsp;RAG Pipeline</a>
+  <a href="#s6" data-section="s6">06&nbsp;&nbsp;Database Design</a>
+  <a href="#s7" data-section="s7">07&nbsp;&nbsp;Auth and Security</a>
+
+  <div class="nav-group-label">Planning</div>
+  <a href="#s8" data-section="s8">08&nbsp;&nbsp;Scalability Plan</a>
+  <a href="#s9" data-section="s9">09&nbsp;&nbsp;Design Decisions</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════════ -->
+<div id="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Full Stack AI Project</div>
+    <div class="hero-title">Neural<span>Chat</span></div>
+    <div class="hero-desc">A production-ready AI chatbot with Retrieval-Augmented Generation, JWT authentication, document upload, and semantic search over private documents.</div>
+    <div class="stack-row">
+      <span class="stack-tag">React + Vite</span>
+      <span class="stack-tag">FastAPI</span>
+      <span class="stack-tag">LangChain</span>
+      <span class="stack-tag">FAISS</span>
+      <span class="stack-tag">sentence-transformers</span>
+      <span class="stack-tag">Groq LLM</span>
+      <span class="stack-tag">SQLite</span>
+      <span class="stack-tag">JWT + bcrypt</span>
+    </div>
+  </div>
+
+  <!-- ═══ S1: PROJECT OVERVIEW ═══ -->
+  <div class="section" id="s1">
+    <div class="section-badge">Section 01</div>
+    <div class="section-title">Project Overview</div>
+    <div class="section-sub">What NeuralChat does, the problem it solves, and its core capabilities.</div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>What is NeuralChat?</div>
+      <p>NeuralChat is a full stack AI chatbot that allows authenticated users to upload private documents such as PDFs and text files, then ask natural language questions answered from the content of those documents. It uses a technique called Retrieval-Augmented Generation (RAG) to combine a local semantic search layer with a free-tier LLM.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>The Problem</div>
+        <p>Standard LLMs are trained on public data with a knowledge cutoff. They have no access to private documents, internal reports, or domain-specific files. Without RAG, the only alternative is expensive fine-tuning which requires GPU time and becomes outdated the moment documents change.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Why RAG?</div>
+        <p>RAG adds a retrieval layer that searches your own documents before generating a response. It requires no training, supports instant knowledge updates by simply uploading a new file, and produces answers grounded in real source content rather than hallucinated responses.</p>
+      </div>
+    </div>
+
+    <h2>Key Features</h2>
+    <div class="pill-row">
+      <span class="pill pill-green">JWT Auth</span>
+      <span class="pill pill-green">bcrypt Hashing</span>
+      <span class="pill pill-green">Protected Routes</span>
+      <span class="pill pill-blue">PDF and TXT Upload</span>
+      <span class="pill pill-blue">Semantic Retrieval</span>
+      <span class="pill pill-blue">FAISS Vector Index</span>
+      <span class="pill pill-orange">Groq LLM (Free Tier)</span>
+      <span class="pill pill-orange">Conversation History</span>
+      <span class="pill pill-purple">LangChain RAG Pipeline</span>
+      <span class="pill pill-purple">sentence-transformers Embeddings</span>
+    </div>
+  </div>
+
+  <!-- ═══ S2: SYSTEM ARCHITECTURE ═══ -->
+  <div class="section" id="s2">
+    <div class="section-badge">Section 02</div>
+    <div class="section-title">High Level System Architecture</div>
+    <div class="section-sub">How all components connect and how data flows from the browser to the LLM and back.</div>
+
+    <!-- Architecture diagram with animated gradient border and light beam -->
+    <div class="arch-diagram">
+      <div class="arch-beam" aria-hidden="true"></div>
+      <div class="arch-label">System Architecture Overview</div>
+
+      <div class="arch-row">
+        <div class="arch-box green">
+          <div class="ab-label">Layer 1</div>
+          <div class="ab-name">React Browser</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow-v">
+        <div class="line"></div><div class="tip"></div>
+        <div class="note">HTTP REST + Bearer JWT</div>
+      </div>
+
+      <div class="arch-row">
+        <div class="arch-box blue">
+          <div class="ab-label">Layer 2</div>
+          <div class="ab-name">FastAPI Backend</div>
+        </div>
+      </div>
+
+      <div class="arch-row" style="margin-top:8px; gap:80px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip"></div></div>
+          <div style="font-size:10px;color:var(--text3);">SQLAlchemy ORM</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip"></div></div>
+          <div style="font-size:10px;color:var(--text3);">LangChain RAG</div>
+        </div>
+      </div>
+
+      <div class="arch-row" style="gap:40px;">
+        <div class="arch-box orange">
+          <div class="ab-label">Persistence</div>
+          <div class="ab-name">SQLite DB</div>
+        </div>
+        <div class="arch-box purple">
+          <div class="ab-label">Intelligence</div>
+          <div class="ab-name">RAG Pipeline</div>
+        </div>
+      </div>
+
+      <div class="arch-row" style="margin-top:8px; gap:40px; margin-left:140px;">
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip"></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip"></div></div>
+        </div>
+      </div>
+
+      <div class="arch-row" style="gap:40px; margin-left:140px;">
+        <div class="arch-box red">
+          <div class="ab-label">Vector Store</div>
+          <div class="ab-name">FAISS Index</div>
+        </div>
+        <div class="arch-box green">
+          <div class="ab-label">LLM</div>
+          <div class="ab-name">Groq API</div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:18px; font-size:11px; color:var(--text3);">
+        Embeddings: sentence-transformers all-MiniLM-L6-v2 running locally on CPU
+      </div>
+    </div>
+
+    <h2>Request Lifecycle</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-body">
+          <strong>User sends a message</strong>
+          <span>React sends POST /api/chat/message with the message text and a Bearer JWT token in the Authorization header.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-body">
+          <strong>FastAPI validates the token</strong>
+          <span>The JWT is decoded, the signature and expiry are verified, and the username is extracted from the payload.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-body">
+          <strong>Message saved to database</strong>
+          <span>The user message is written to the chat_messages table in SQLite with role=user and a server-generated timestamp.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-body">
+          <strong>RAG retrieval runs</strong>
+          <span>The query is embedded into a vector using sentence-transformers. FAISS searches for the top 4 most semantically similar document chunks.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-body">
+          <strong>LLM generates the answer</strong>
+          <span>LangChain builds a prompt with the retrieved chunks and conversation history, then sends it to Groq's llama3 model.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-body">
+          <strong>Response saved and returned</strong>
+          <span>The assistant response is saved to SQLite as role=assistant and returned to React, which renders it as a chat bubble.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S3: FRONTEND ═══ -->
+  <div class="section" id="s3">
+    <div class="section-badge">Section 03</div>
+    <div class="section-title">Frontend Architecture</div>
+    <div class="section-sub">React component structure, authentication flow, and state management.</div>
+
+    <h2>Component Structure</h2>
+    <pre>
+main.jsx
+  BrowserRouter
+    AuthProvider        (global auth state via Context API)
+      App.jsx
+        /login          -&gt; LoginPage.jsx       (public)
+        /register       -&gt; RegisterPage.jsx    (public)
+        /chat           -&gt; ProtectedRoute
+                             -&gt; ChatPage.jsx   (JWT required)
+        *               -&gt; Redirect to /login</pre>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>AuthContext</div>
+        <p>Holds token and username in React state. Reads from localStorage on page load so sessions survive refresh. The login() function writes to both localStorage and state. logout() clears both and the Axios interceptor redirects to /login on any 401 response.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>ProtectedRoute</div>
+        <p>A wrapper component that checks isAuth from AuthContext. If the user is not authenticated it redirects immediately to /login using React Router's Navigate with replace=true, preventing the back-button from returning to a protected page.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Axios Service Layer (api.js)</div>
+      <p>A single Axios instance is used for all API calls. A request interceptor automatically attaches the JWT token from localStorage as a Bearer token on every outgoing request. A response interceptor catches 401 errors, clears the token, and redirects to /login. This centralizes auth logic so no component needs to handle it manually.</p>
+    </div>
+
+    <h2>Chat State</h2>
+    <pre>
+const [messages,  setMessages]  = useState([])   // full chat list
+const [input,     setInput]     = useState("")    // textarea value
+const [thinking,  setThinking]  = useState(false) // waiting for LLM
+const [documents, setDocuments] = useState([])   // uploaded docs
+
+// Load history and documents in parallel on mount
+useEffect(() =&gt; { Promise.all([getHistory(), getDocuments()]) }, [])
+
+// Auto-scroll to latest message
+useEffect(() =&gt; { bottomRef.current?.scrollIntoView() }, [messages])</pre>
+  </div>
+
+  <!-- ═══ S4: BACKEND ═══ -->
+  <div class="section" id="s4">
+    <div class="section-badge">Section 04</div>
+    <div class="section-title">Backend Architecture</div>
+    <div class="section-sub">FastAPI project layout, route definitions, and dependency injection.</div>
+
+    <!-- FastAPI tech indicator badge -->
+    <div style="margin-bottom:18px;">
+      <span class="tech-badge tb-blue">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="5" width="7" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="11" y="5" width="7" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="9" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="9" y1="12" x2="11" y2="12" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        API Gateway &mdash; FastAPI
+      </span>
+      <span class="tech-badge tb-green">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 2L16 5V10C16 13.5 13.2 16.7 10 18C6.8 16.7 4 13.5 4 10V5L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <polyline points="7,10 9,12 13,8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        JWT Protected Routes
+      </span>
+      <span class="tech-badge tb-orange">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="10" cy="5" rx="7" ry="3" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 5v5c0 1.66 3.13 3 7 3s7-1.34 7-3V5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 10v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        SQLite ORM
+      </span>
+    </div>
+
+    <h2>Project Structure</h2>
+    <pre>
+backend/
+  main.py               # App factory, CORS middleware, router mounting
+  .env                  # Secrets: SECRET_KEY, GROQ_API_KEY, DB URL
+
+  app/
+    config.py           # pydantic-settings loads .env into typed Settings class
+    database.py         # SQLAlchemy engine, session factory, get_db() dependency
+
+    models/models.py    # User ORM model, ChatMessage ORM model
+
+    routes/
+      auth.py           # POST /api/auth/register, POST /api/auth/login
+      chat.py           # message, history, upload, documents endpoints
+
+    utils/
+      jwt_utils.py      # create_access_token(), verify_token(), Depends() helper
+      password.py       # hash_password(), verify_password() via bcrypt
+
+    rag/pipeline.py     # ingest_document(), rag_query(), list_documents()</pre>
+
+    <h2>API Endpoints</h2>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="green">POST</td><td>/api/auth/register</td><td>Public</td><td>Create account with hashed password</td></tr>
+        <tr><td class="green">POST</td><td>/api/auth/login</td><td>Public</td><td>Verify credentials, return JWT</td></tr>
+        <tr><td class="green">POST</td><td>/api/chat/message</td><td>JWT</td><td>RAG query and save to chat history</td></tr>
+        <tr><td class="blue">GET</td><td>/api/chat/history</td><td>JWT</td><td>Fetch recent messages</td></tr>
+        <tr><td class="green">POST</td><td>/api/chat/upload</td><td>JWT</td><td>Upload and ingest document</td></tr>
+        <tr><td class="blue">GET</td><td>/api/chat/documents</td><td>JWT</td><td>List ingested documents</td></tr>
+        <tr><td class="orange">DELETE</td><td>/api/chat/history</td><td>JWT</td><td>Clear user chat history</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-blue">
+      <strong>Dependency Injection:</strong> Every protected route declares <code>username: str = Depends(get_current_user_username)</code>. FastAPI calls this function automatically before the route handler runs, ensuring the JWT is valid. No extra boilerplate needed per route.
+    </div>
+  </div>
+
+  <!-- ═══ S5: RAG PIPELINE ═══ -->
+  <div class="section" id="s5">
+    <div class="section-badge">Section 05</div>
+    <div class="section-title">RAG Pipeline Overview</div>
+    <div class="section-sub">How documents are processed, stored, and retrieved to power context-aware responses.</div>
+
+    <!-- RAG + CPU tech badges -->
+    <div style="margin-bottom:18px;">
+      <span class="tech-badge tb-purple">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 10 L10 3 L17 10 L10 17 Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <line x1="10" y1="3" x2="10" y2="17" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+          <line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+        </svg>
+        RAG Network Flow
+      </span>
+      <span class="tech-badge tb-green">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="7" y="7" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="8" y1="4" x2="8" y2="2"  stroke="currentColor" stroke-width="1.2"/>
+          <line x1="12" y1="4" x2="12" y2="2" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="8" y1="16" x2="8" y2="18"  stroke="currentColor" stroke-width="1.2"/>
+          <line x1="12" y1="16" x2="12" y2="18" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="4" y1="8" x2="2" y2="8"   stroke="currentColor" stroke-width="1.2"/>
+          <line x1="4" y1="12" x2="2" y2="12"  stroke="currentColor" stroke-width="1.2"/>
+          <line x1="16" y1="8" x2="18" y2="8"  stroke="currentColor" stroke-width="1.2"/>
+          <line x1="16" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        Local CPU Embeddings
+      </span>
+    </div>
+
+    <div class="callout callout-green">
+      <strong>Core Idea:</strong> RAG separates knowledge retrieval from response generation. The retriever finds relevant content. The LLM uses that content to write a grounded answer. Neither alone is sufficient for domain-specific Q and A.
+    </div>
+
+    <h2>Ingestion Pipeline (On Upload)</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-body">
+          <strong>Document Loading</strong>
+          <span>PyPDFLoader reads PDF pages. TextLoader handles plain text files. Both return LangChain Document objects with page_content and metadata fields.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-body">
+          <strong>Chunking</strong>
+          <span>RecursiveCharacterTextSplitter breaks documents into 512-character chunks with 64-character overlap. The overlap prevents important sentences from being split across two chunks and losing context.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-body">
+          <strong>Embedding</strong>
+          <span>Each chunk is converted to a 384-dimensional vector using sentence-transformers all-MiniLM-L6-v2, running locally on CPU. Similar text produces vectors that are close in vector space.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-body">
+          <strong>Storage</strong>
+          <span>Vectors are stored in a FAISS index on disk. Metadata (filename, user_id, chunk count, timestamp) is saved to a JSON file alongside the index.</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>Query Pipeline (On Message)</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-body">
+          <strong>Query Embedding</strong>
+          <span>The user's question is embedded using the same model, producing a vector that represents its meaning.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-body">
+          <strong>Similarity Search</strong>
+          <span>FAISS computes cosine similarity between the query vector and all stored chunk vectors. The top 4 most relevant chunks are returned.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-body">
+          <strong>Prompt Construction</strong>
+          <span>LangChain injects the 4 retrieved chunks plus the last few conversation turns into a structured prompt sent to the LLM.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-body">
+          <strong>LLM Response</strong>
+          <span>Groq's llama3 reads the context and generates a factual, grounded answer at temperature 0.3 for consistent results.</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>RAG vs Normal Chatbot</h2>
+    <table>
+      <thead>
+        <tr><th>Aspect</th><th>Normal Chatbot</th><th>NeuralChat with RAG</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Knowledge source</td><td>Training data only</td><td class="green">Your uploaded documents</td></tr>
+        <tr><td>Private data access</td><td class="orange">Not possible</td><td class="green">Full access via retrieval</td></tr>
+        <tr><td>Update knowledge</td><td class="orange">Requires retraining</td><td class="green">Upload a new file</td></tr>
+        <tr><td>Accuracy on domain data</td><td class="orange">Hallucinates</td><td class="green">Grounded in source chunks</td></tr>
+        <tr><td>Cost</td><td class="orange">Fine-tuning: very expensive</td><td class="green">Inference only: near zero</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ S6: DATABASE ═══ -->
+  <div class="section" id="s6">
+    <div class="section-badge">Section 06</div>
+    <div class="section-title">Database Design</div>
+    <div class="section-sub">SQLite schema, ORM models, and metadata storage strategy.</div>
+
+    <!-- DB tech badge -->
+    <div style="margin-bottom:18px;">
+      <span class="tech-badge tb-orange">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="10" cy="5" rx="7" ry="3" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 5v5c0 1.66 3.13 3 7 3s7-1.34 7-3V5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 10v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        SQLite Database
+      </span>
+    </div>
+
+    <h2>Users Table</h2>
+    <pre>
+class User(Base):
+    __tablename__ = "users"
+    id               = Column(Integer, primary_key=True, index=True)
+    username         = Column(String(50), unique=True, index=True)
+    email            = Column(String(100), unique=True, index=True)
+    hashed_password  = Column(String(255), nullable=False)
+    created_at       = Column(DateTime(timezone=True), server_default=func.now())</pre>
+
+    <h2>Chat Messages Table</h2>
+    <pre>
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
+    role       = Column(String(10), nullable=False)   # "user" or "assistant"
+    content    = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())</pre>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Design Notes</div>
+        <p><strong>role field:</strong> Using a single messages table with a role discriminator matches the LLM chat format standard (user/assistant), making history directly usable as conversation memory without transformation.</p>
+        <p><strong>server_default:</strong> Timestamps are set by the database engine, not the application, ensuring consistent time across all server instances.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Vector Metadata</div>
+        <p>FAISS stores only vectors. A companion <code>metadata.json</code> file tracks document names, user IDs, chunk counts, and ingestion timestamps. This bridges the gap between the vector index and the UI without querying the vector store itself.</p>
+        <pre style="margin-top:10px; font-size:11.5px;">
+{
+  "documents": [{
+    "filename": "resume.pdf",
+    "user_id": 1,
+    "chunks": 10,
+    "ingested_at": 1706789234
+  }]
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S7: AUTH AND SECURITY ═══ -->
+  <div class="section" id="s7">
+    <div class="section-badge">Section 07</div>
+    <div class="section-title">Authentication and Security</div>
+    <div class="section-sub">JWT lifecycle, password hashing, and endpoint protection.</div>
+
+    <!-- Security tech badges -->
+    <div style="margin-bottom:18px;">
+      <span class="tech-badge tb-green">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 2L16 5V10C16 13.5 13.2 16.7 10 18C6.8 16.7 4 13.5 4 10V5L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <text x="6.5" y="13" font-size="7" fill="currentColor" font-weight="bold">JWT</text>
+        </svg>
+        JWT Security Shield
+      </span>
+      <span class="tech-badge tb-blue">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="9" width="10" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 9V7a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="10" cy="13" r="1.5" fill="currentColor"/>
+        </svg>
+        bcrypt Lock
+      </span>
+      <span class="tech-badge tb-orange">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="10" y1="6" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="10" x2="13" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        60 min Token Expiry
+      </span>
+    </div>
+
+    <h2>JWT Token Flow</h2>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-body">
+          <strong>Login and Token Creation</strong>
+          <span>On successful login, python-jose creates a JWT with payload {"sub": username, "exp": now + 60 minutes}, signed with HS256 using the SECRET_KEY from the .env file.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-body">
+          <strong>Token Storage and Transport</strong>
+          <span>The token is returned in the login response body. React stores it in localStorage and AuthContext. Every API request attaches it as Authorization: Bearer token.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-body">
+          <strong>Validation on Protected Routes</strong>
+          <span>FastAPI's OAuth2PasswordBearer extracts the token. verify_token() checks the signature, expiry, and sub claim. Any failure returns a 401 immediately.</span>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-body">
+          <strong>Expiry and Re-login</strong>
+          <span>After 60 minutes the token expires. The Axios response interceptor catches the 401, clears localStorage, and redirects to the login page.</span>
+        </div>
+      </div>
+    </div>
+
+    <h2>Password Hashing</h2>
+    <pre>
+# Every password gets a unique random salt
+hashed = bcrypt.hashpw(password.encode("utf-8")[:72], bcrypt.gensalt())
+
+# Verification never reveals the original password
+bcrypt.checkpw(submitted.encode()[:72], stored_hash.encode())</pre>
+
+    <div class="callout callout-orange">
+      <strong>Why bcrypt?</strong> Unlike SHA-256 which is designed to be fast (billions of hashes per second), bcrypt is deliberately slow by design. Each hash takes roughly 100ms, making brute-force attacks impractical. The built-in random salt also prevents rainbow table attacks.
+    </div>
+
+    <h2>Security Summary</h2>
+    <table>
+      <thead>
+        <tr><th>Threat</th><th>Mitigation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Password theft</td><td class="green">bcrypt with unique salt per user. Plain password never stored.</td></tr>
+        <tr><td>Token forgery</td><td class="green">HS256 signature. Invalid tokens rejected immediately.</td></tr>
+        <tr><td>Unauthorized access</td><td class="green">All chat routes require valid JWT via Depends().</td></tr>
+        <tr><td>Cross-origin attacks</td><td class="green">CORS restricted to frontend domain only.</td></tr>
+        <tr><td>Secrets exposure</td><td class="green">All secrets in .env, listed in .gitignore, never hardcoded.</td></tr>
+        <tr><td>SQL injection</td><td class="green">SQLAlchemy ORM uses parameterized queries throughout.</td></tr>
+        <tr><td>Malicious uploads</td><td class="green">File extension whitelist: .pdf, .txt, .md only.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ S8: SCALABILITY ═══ -->
+  <div class="section" id="s8">
+    <div class="section-badge">Section 08</div>
+    <div class="section-title">Scalability Plan</div>
+    <div class="section-sub">The upgrade path from local prototype to production infrastructure.</div>
+
+    <!-- Scalable stack badge -->
+    <div style="margin-bottom:18px;">
+      <span class="tech-badge tb-blue">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="13" width="16" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="8"  width="12" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="6" y="3"  width="8"  height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        Scalable Stack Architecture
+      </span>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>SQLite to PostgreSQL</div>
+        <p>SQLite is single-writer and unsuitable for concurrent API workers. Switching requires only a changed DATABASE_URL. SQLAlchemy ORM code is database-agnostic so no business logic changes. Add pgBouncer for connection pooling.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>FAISS to Pinecone</div>
+        <p>FAISS is single-node and in-memory. For multi-server deployments, Pinecone or Qdrant provide a managed distributed vector store. LangChain's Pinecone class is a drop-in replacement. Add per-user namespaces for document isolation.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Redis Caching</div>
+        <p>Cache embedding outputs so identical queries skip the model entirely. Cache recent chat history per user to avoid repeated SQLite reads. Use TTL equal to the JWT expiry to auto-invalidate stale sessions.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Async Processing</div>
+        <p>Document ingestion currently blocks the request thread. Moving it to FastAPI BackgroundTasks or a Celery worker queue allows the API to return immediately while ingestion runs in the background.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Horizontal Scaling</div>
+        <p>FastAPI is stateless so multiple instances can run behind an Nginx load balancer. Auto-scaling groups add instances under high traffic. All state lives in external services: PostgreSQL, Redis, Pinecone.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Containerization</div>
+        <p>Docker Compose defines services for the API, Celery worker, Redis, and Postgres. For cloud deployment: AWS ECS, GCP Cloud Run, or Kubernetes for orchestration. GitHub Actions for CI/CD automation.</p>
+      </div>
+    </div>
+
+    <h2>Production Architecture</h2>
+    <pre>
+Internet
+  -&gt; CDN (Cloudflare)
+  -&gt; Load Balancer (Nginx or AWS ALB)
+      -&gt; FastAPI Containers x3 (stateless, auto-scaled)
+          -&gt; PostgreSQL     (RDS or Cloud SQL)
+          -&gt; Redis          (ElastiCache for caching)
+          -&gt; Pinecone       (managed vector database)
+          -&gt; Celery Workers (document ingestion queue)
+          -&gt; S3             (file storage)
+          -&gt; Groq API       (LLM inference)</pre>
+  </div>
+
+  <!-- ═══ S9: DESIGN DECISIONS ═══ -->
+  <div class="section" id="s9">
+    <div class="section-badge">Section 09</div>
+    <div class="section-title">Key Design Decisions</div>
+    <div class="section-sub">Why each technology was chosen and what the tradeoffs are.</div>
+
+    <table>
+      <thead>
+        <tr><th>Decision</th><th>Chosen</th><th>Reason</th><th>When to Switch</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>API Framework</strong></td>
+          <td class="green">FastAPI</td>
+          <td>Auto OpenAPI docs, Pydantic validation, async support, native Python ML ecosystem</td>
+          <td>Django for large teams needing admin and ORM. Flask for simpler single-file apps.</td>
+        </tr>
+        <tr>
+          <td><strong>Frontend</strong></td>
+          <td class="green">React + Vite</td>
+          <td>Component reuse, fast HMR dev experience, industry standard, huge ecosystem</td>
+          <td>Next.js when SSR or SEO is required. Vue for teams preferring opinionated structure.</td>
+        </tr>
+        <tr>
+          <td><strong>RAG vs Fine-tuning</strong></td>
+          <td class="green">RAG</td>
+          <td>Zero training cost, instant updates, grounded answers, works with any LLM</td>
+          <td>Fine-tuning when style, tone, or behavior must change, not just knowledge.</td>
+        </tr>
+        <tr>
+          <td><strong>Vector Store</strong></td>
+          <td class="green">FAISS (local)</td>
+          <td>No server required, zero cost, fast enough for prototype, persists to disk</td>
+          <td>Pinecone or Qdrant for multi-server deployments or beyond 1 million vectors.</td>
+        </tr>
+        <tr>
+          <td><strong>LLM</strong></td>
+          <td class="green">Groq free tier</td>
+          <td>Free at low volume, fast inference speed, llama3 quality is strong</td>
+          <td>OpenAI GPT-4 for higher quality. Ollama for fully offline. Gemini for Google infra.</td>
+        </tr>
+        <tr>
+          <td><strong>Database</strong></td>
+          <td class="green">SQLite</td>
+          <td>Zero setup, file-based, perfect for single-server prototype and development</td>
+          <td>PostgreSQL for any production deployment with concurrent API workers.</td>
+        </tr>
+        <tr>
+          <td><strong>Auth Strategy</strong></td>
+          <td class="green">JWT stateless</td>
+          <td>No server-side session storage, scales horizontally, REST API standard</td>
+          <td>Session-based auth when instant token revocation is needed. OAuth2 for social login.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-blue">
+      <strong>Overall Philosophy:</strong> NeuralChat was built with clear layer separation so each component is independently replaceable. Swapping SQLite for PostgreSQL, FAISS for Pinecone, or Groq for OpenAI requires changes only to initialization code, not business logic. This is intentional and is the right way to build systems that need to evolve.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="footer">
+    NeuralChat Technical Documentation &nbsp;|&nbsp; React + FastAPI + LangChain + FAISS + Groq
+  </div>
+</div><!-- /#main -->
+
+<!-- Scroll to top button -->
+<button id="scrollTop" aria-label="Scroll to top" title="Scroll to top">
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 15V5M6 9l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   JAVASCRIPT — All lightweight, no frameworks
+═══════════════════════════════════════════════════════ */
+
+document.addEventListener("DOMContentLoaded", function () {
+
+  /* ─────────────────────────────────────────────────────
+     1. SECTION REVEAL ON SCROLL
+     Observes each .section and adds .revealed when visible.
+  ───────────────────────────────────────────────────── */
+  var sections = document.querySelectorAll(".section");
+
+  var revealObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("revealed");
+        }
+      });
+    },
+    { threshold: 0.08, rootMargin: "0px 0px -60px 0px" }
+  );
+
+  sections.forEach(function (sec) {
+    revealObserver.observe(sec);
+  });
+
+  /* ─────────────────────────────────────────────────────
+     2. ACTIVE SECTION SHADOW ELEVATION
+  ───────────────────────────────────────────────────── */
+  var elevationObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          sections.forEach(function (s) { s.classList.remove("section-active"); });
+          entry.target.classList.add("section-active");
+        }
+      });
+    },
+    { threshold: 0.35 }
+  );
+
+  sections.forEach(function (sec) {
+    elevationObserver.observe(sec);
+  });
+
+  /* ─────────────────────────────────────────────────────
+     3. SIDEBAR + MOBILE ACTIVE LINK HIGHLIGHTING
+     Uses IntersectionObserver to highlight matching nav links
+  ───────────────────────────────────────────────────── */
+  var navLinks       = document.querySelectorAll("#nav a[data-section]");
+  var mobileLinks    = document.querySelectorAll("#mobile-menu a[data-section]");
+  var allNavLinks    = Array.from(navLinks).concat(Array.from(mobileLinks));
+
+  var linkMap = {};
+  allNavLinks.forEach(function (link) {
+    var sid = link.getAttribute("data-section");
+    if (sid) {
+      if (!linkMap[sid]) linkMap[sid] = [];
+      linkMap[sid].push(link);
+    }
+  });
+
+  var visibilityMap = {};
+
+  var sidebarObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        visibilityMap[entry.target.id] = entry.intersectionRatio;
+      });
+
+      var maxRatio = 0;
+      var activeId = null;
+      Object.keys(visibilityMap).forEach(function (id) {
+        if (visibilityMap[id] > maxRatio) {
+          maxRatio  = visibilityMap[id];
+          activeId  = id;
+        }
+      });
+
+      allNavLinks.forEach(function (link) {
+        link.classList.remove("nav-active");
+      });
+
+      if (activeId && linkMap[activeId]) {
+        linkMap[activeId].forEach(function (l) { l.classList.add("nav-active"); });
+      }
+    },
+    {
+      threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+      rootMargin: "-80px 0px -20% 0px"
+    }
+  );
+
+  sections.forEach(function (sec) {
+    if (sec.id) sidebarObserver.observe(sec);
+  });
+
+  /* ─────────────────────────────────────────────────────
+     4. SMOOTH SCROLL FOR NAV LINKS (sidebar + mobile)
+  ───────────────────────────────────────────────────── */
+  allNavLinks.forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      var targetId = this.getAttribute("data-section");
+      var target   = document.getElementById(targetId);
+      if (target) {
+        e.preventDefault();
+        // Close mobile menu if open
+        var menu   = document.getElementById("mobile-menu");
+        var toggle = document.getElementById("mobile-menu-toggle");
+        if (menu && menu.classList.contains("open")) {
+          menu.classList.remove("open");
+          toggle.classList.remove("open");
+          toggle.setAttribute("aria-expanded", "false");
+        }
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  /* ─────────────────────────────────────────────────────
+     5. MOBILE MENU TOGGLE
+  ───────────────────────────────────────────────────── */
+  var mobileToggle = document.getElementById("mobile-menu-toggle");
+  var mobileMenu   = document.getElementById("mobile-menu");
+
+  if (mobileToggle && mobileMenu) {
+    mobileToggle.addEventListener("click", function () {
+      var isOpen = mobileMenu.classList.toggle("open");
+      mobileToggle.classList.toggle("open", isOpen);
+      mobileToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
+  /* ─────────────────────────────────────────────────────
+     6. SCROLL-TO-TOP BUTTON
+  ───────────────────────────────────────────────────── */
+  var scrollTopBtn = document.getElementById("scrollTop");
+
+  window.addEventListener("scroll", function () {
+    if (window.scrollY > 300) {
+      scrollTopBtn.classList.add("visible");
+    } else {
+      scrollTopBtn.classList.remove("visible");
+    }
+  }, { passive: true });
+
+  scrollTopBtn.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* ─────────────────────────────────────────────────────
+     7. FLOW NUMBER RIPPLE ON HOVER
+  ───────────────────────────────────────────────────── */
+  var flowSteps = document.querySelectorAll(".flow-step");
+
+  flowSteps.forEach(function (step) {
+    var num = step.querySelector(".flow-num");
+    if (!num) return;
+
+    step.addEventListener("mouseenter", function () {
+      num.style.transition = "transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s";
+    });
+
+    step.addEventListener("mouseleave", function () {
+      num.style.transition = "transform 0.25s ease, box-shadow 0.25s ease, background 0.25s";
+    });
+  });
+
+  /* ─────────────────────────────────────────────────────
+     8. ARCH-BOX GLOW ON CLICK (tactile feedback for presentations)
+  ───────────────────────────────────────────────────── */
+  document.querySelectorAll(".arch-box").forEach(function (box) {
+    box.addEventListener("click", function () {
+      this.style.transition = "box-shadow 0.05s";
+      this.style.boxShadow  = "0 0 32px rgba(61,214,140,0.5), 0 12px 32px rgba(0,0,0,0.5)";
+      var self = this;
+      setTimeout(function () {
+        self.style.transition = "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease";
+        self.style.boxShadow  = "";
+      }, 400);
+    });
+  });
+
+  /* ─────────────────────────────────────────────────────
+     9. STAGGERED CARD REVEAL (cascade effect within sections)
+  ───────────────────────────────────────────────────── */
+  var cardObserver = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var cards = entry.target.querySelectorAll(".card");
+          cards.forEach(function (card, i) {
+            card.style.transitionDelay = (i * 0.06) + "s";
+            card.style.opacity         = "1";
+            card.style.transform       = "translateY(0)";
+          });
+          cardObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+
+  sections.forEach(function (sec) {
+    var cards = sec.querySelectorAll(".card");
+    cards.forEach(function (card) {
+      card.style.opacity    = "0";
+      card.style.transform  = "translateY(14px)";
+      card.style.transition = "opacity 0.4s ease, transform 0.4s ease, box-shadow 0.25s ease, border-color 0.25s ease";
+    });
+    cardObserver.observe(sec);
+  });
+
+  /* ─────────────────────────────────────────────────────
+     10. TABLE ROW HIGHLIGHT ON HOVER
+  ───────────────────────────────────────────────────── */
+  document.querySelectorAll("table tbody tr").forEach(function (row) {
+    row.addEventListener("mouseenter", function () {
+      this.style.background = "rgba(61,214,140,0.04)";
+    });
+    row.addEventListener("mouseleave", function () {
+      this.style.background = "";
+    });
+  });
+
+}); // end DOMContentLoaded
+</script>
+
+</body>
+</html>
